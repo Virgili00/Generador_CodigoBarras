@@ -4,6 +4,7 @@ from reportlab.pdfgen import canvas
 from reportlab.graphics.barcode import createBarcodeDrawing
 from reportlab.graphics.shapes import Drawing
 from reportlab.graphics.shapes import Group
+from reportlab.lib.units import cm
 from io import BytesIO  # Para crear el archivo en memoria
 import zipfile as zip
 
@@ -29,56 +30,64 @@ class GeneradorPDF:
         return zip_memoria.getvalue()
 
 class Pdf:
-    def __init__(self,row):
-        self.row=row
-        
+    def __init__(self, row):
+        self.row = row
+
     def getNombre(self):
-        nombre=f"{self.row['DESCRIPCION']}_{self.row['TALLE']}_{self.row['SKU']}"
+        nombre = f"{self.row['DESCRIPCION']}_{self.row['TALLE']}_{self.row['SKU']}"
         return nombre
+
     def generarPdf(self):
-            buffer=BytesIO()
-            c = canvas.Canvas(buffer, pagesize=A4)
-            # Dimensiones de la página
-            ancho_pagina, alto_pagina = A4
-            # Margen
-            margen_x = 50
-            codigo_barras = createBarcodeDrawing('EAN13', value=str(self.row['EANS']), barHeight=30, humanReadable=True)
-            
-            # Ajustar la escala del código de barras
-            factor_escala = 3  # Cambiar este valor para escalar el código de barras
-            ancho_codigo = codigo_barras.width * factor_escala
-            alto_codigo = codigo_barras.height * factor_escala
+        # Crear el buffer en memoria
+        buffer = BytesIO()
 
-            # Crear un dibujo con la escala ajustada
-            d = Drawing(ancho_codigo, alto_codigo)
-            d.add(Group(codigo_barras, transform=[factor_escala, 0, 0, factor_escala, 0, 0]))
+        # Establecer el tamaño del PDF a 6x3 cm
+        c = canvas.Canvas(buffer, pagesize=(6*cm, 3*cm))
 
-            # Dibujar el código de barras centrado
-            x_position = (ancho_pagina - ancho_codigo) / 2
-            d.drawOn(c, x_position, alto_pagina - alto_codigo - 200)  # Ajustar la posición vertical del código de barras
+        # Dimensiones de la página en puntos (6x3 cm)
+        ancho_pagina, alto_pagina = 6 * cm, 3 * cm
 
-            # Datos adicionales debajo del código de barras
-            c.setFont("Helvetica", 12)
-            texto_y = alto_pagina - alto_codigo - 200 - 15  # Reducir aún más el margen vertical para acercar el texto al código de barras
+        # Margen en puntos (ajusta esto si lo necesitas)
+        margen_x = 5
 
-            # Ajustar el texto para que coincida con el ancho del código de barras
-            c.drawString(x_position + margen_x, texto_y, f"Ref: {self.row['SKU']}")
-            c.drawString(x_position + ancho_codigo - margen_x , texto_y, f"Talle: {self.row['TALLE']}")
+        # Crear el código de barras (EAN13 por ejemplo)
+        codigo_barras = createBarcodeDrawing('EAN13', value=str(self.row['EANS']), barHeight=1.1*cm, humanReadable=True)
 
-            # Descripción centrada con tamaño de fuente más pequeño
-            c.setFont("Helvetica-Bold", 9)  # Tamaño de fuente reducido
-            c.drawCentredString(ancho_pagina / 2.0, alto_pagina - alto_codigo - 200 -30, self.row['DESCRIPCION'])  # Ajustar la posición vertical de la descripción
+        # Ajustar la escala del código de barras
+        factor_escala = 1.5  # Cambia este valor para ajustar el tamaño del código de barras
+        ancho_codigo = codigo_barras.width * factor_escala
+        alto_codigo = codigo_barras.height * factor_escala
 
-            # Añadir una nueva página para el siguiente código de barras
-            c.showPage()
-            # Crear el pdf
-            c.save()
-            buffer.seek(0)
-            return buffer.getvalue()
+        # Crear un dibujo con la escala ajustada
+        d = Drawing(ancho_codigo, alto_codigo)
+        d.add(Group(codigo_barras, transform=[factor_escala, 0, 0, factor_escala, 0, 0]))
+
+        # Dibujar el código de barras centrado en la página
+        x_position = (ancho_pagina - ancho_codigo) / 2
+        d.drawOn(c, x_position, alto_pagina - alto_codigo - margen_x)
+
+        # Añadir datos adicionales debajo del código de barras
+        c.setFont("Helvetica", 6)
+        texto_y = alto_pagina - alto_codigo - margen_x - 10  # Ajustar la posición del texto
+
+        # Texto adicional en la parte inferior
+        c.drawString(margen_x, texto_y, f"Ref: {self.row['SKU']}-{self.row['CODE COLOR']}")
+        c.drawString(ancho_pagina - margen_x - 40, texto_y, f"Talle: {self.row['TALLE']}")
+
+        # Descripción en el centro de la parte inferior
+        c.setFont("Helvetica-Bold", 5)
+        c.drawCentredString(ancho_pagina / 2.0, texto_y - 10, self.row['DESCRIPCION'])
+
+        # Finalizar el PDF
+        c.showPage()
+        c.save()
+
+        # Retornar el contenido del PDF
+        buffer.seek(0)
+        return buffer.getvalue()
+
     def getPdf(self):
-        pdfBuffer=self.generarPdf()
-        return pdfBuffer
-    
+        return self.generarPdf()
 
      
         
