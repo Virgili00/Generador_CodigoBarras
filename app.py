@@ -26,6 +26,17 @@ if uploaded_file is not None:
             file_name="codigo_barras.zip",
             mime="application/zip"
         )
+    generar_png = st.button("Generar PNGs")
+    if generar_png:
+        # Generar el PDF en memoria
+        pdf_data =GeneradorPDF(uploaded_file)
+        # Mostrar el botón de descarga inmediatamente después de generar el PDF
+        st.download_button(
+            label="Descargar PNG",
+            data=pdf_data.generarPng(),
+            file_name="codigo_barras.zip",
+            mime="application/zip"
+        )
         
 else:
     st.warning("Por favor, sube un archivo para generar el PDF.")

@@ -7,27 +7,53 @@ from reportlab.graphics.shapes import Group
 from reportlab.lib.units import cm
 from io import BytesIO  # Para crear el archivo en memoria
 import zipfile as zip
+from pdf2image import convert_from_bytes
 
 # Leer el archivo Excel
 class GeneradorPDF:
-    def __init__(self,archivo):
-        self.archivo=archivo
+    def __init__(self, archivo):
+        self.archivo = archivo
 
     def generarDataFrame(self):
         df = pd.read_excel(self.archivo, sheet_name=0, engine='openpyxl')
         return df
     
     def generarZip(self):
-        zip_memoria=BytesIO()
-        with zip.ZipFile(zip_memoria,'w') as zip_file: 
-            for indice,row in self.generarDataFrame().iterrows():
+        zip_memoria = BytesIO()
+        with zip.ZipFile(zip_memoria, 'w') as zip_file: 
+            for indice, row in self.generarDataFrame().iterrows():
                 try:
-                    pdf=Pdf(row)
-                    zip_file.writestr(f"{pdf.getNombre()}_{indice}.pdf",pdf.getPdf())
-                except:pass
+                    pdf = Pdf(row)
+                    zip_file.writestr(f"{pdf.getNombre()}_{indice}.pdf", pdf.getPdf())
+                except Exception as e:
+                    print(f"Error al generar PDF para {indice}: {e}")
+                    pass
         zip_memoria.seek(0)
-        print("se concreto la generacion")
+        print("Se concretó la generación del ZIP")
         return zip_memoria.getvalue()
+
+    def generarPng(self):
+        zip_memoria = BytesIO()
+        with zip.ZipFile(zip_memoria, 'w') as zip_file: 
+            for indice, row in self.generarDataFrame().iterrows():
+                try:
+                    pdf = Pdf(row)
+                    pdf_bytes = pdf.getPdf()
+                    images = convert_from_bytes(pdf_bytes)
+                    
+                    # Convertir cada página en PNG y agregarla al ZIP
+                    for i, image in enumerate(images):
+                        img_buffer = BytesIO()
+                        image.save(img_buffer, format="PNG")
+                        img_buffer.seek(0)
+                        zip_file.writestr(f"{pdf.getNombre()}_{indice}_{i}.png", img_buffer.getvalue())
+                except Exception as e:
+                    print(f"Error al generar PNG para {indice}: {e}")
+                    pass
+        zip_memoria.seek(0)
+        print("Se concretó la generación del ZIP con PNGs")
+        return zip_memoria.getvalue()
+
 
 class Pdf:
     def __init__(self, row):
@@ -88,13 +114,4 @@ class Pdf:
 
     def getPdf(self):
         return self.generarPdf()
-
-     
-        
-        
-           
-        
-           
-    
-
 
